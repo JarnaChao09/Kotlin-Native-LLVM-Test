@@ -1,0 +1,19 @@
+headers = llvm-c/Core.h \
+          llvm-c/ExecutionEngine.h \
+          llvm-c/Analysis.h
+headerFilter = llvm-c/**
+# linker = clang++
+compilerOpts.osx = -I/opt/homebrew/opt/llvm/include
+linkerOpts.osx = -L/opt/homebrew/opt/llvm/lib -lLLVM-17
+# -Wl,-exported_symbols_list,llvm.list
+# -lLLVMInterpreter -lLLVMAArch64Disassembler -lLLVMMCDisassembler \
+# -lLLVMAArch64AsmParser -lLLVMAArch64CodeGen -lLLVMGlobalISel -lLLVMSelectionDAG -lLLVMCFGuard -lLLVMAsmPrinter \
+# -lLLVMAArch64Desc -lLLVMAArch64Utils -lLLVMAArch64Info -lLLVMOrcJIT -lLLVMPasses -lLLVMIRPrinter -lLLVMCoroutines \
+# -lLLVMipo -lLLVMInstrumentation -lLLVMVectorize -lLLVMLinker -lLLVMFrontendOpenMP -lLLVMCodeGen -lLLVMScalarOpts \
+# -lLLVMInstCombine -lLLVMObjCARCOpts -lLLVMCodeGenTypes -lLLVMBitWriter -lLLVMAggressiveInstCombine -lLLVMTransformUtils \
+# -lLLVMWindowsDriver -lLLVMJITLink -lLLVMOption -lLLVMExecutionEngine -lLLVMTarget -lLLVMAnalysis -lLLVMProfileData \
+# -lLLVMSymbolize -lLLVMDebugInfoBTF -lLLVMDebugInfoPDB -lLLVMDebugInfoMSF -lLLVMDebugInfoDWARF -lLLVMRuntimeDyld \
+# -lLLVMOrcTargetProcess -lLLVMOrcShared -lLLVMObject -lLLVMTextAPI -lLLVMMCParser -lLLVMIRReader -lLLVMAsmParser \
+# -lLLVMBitReader -lLLVMMC -lLLVMDebugInfoCodeView -lLLVMCore -lLLVMRemarks -lLLVMBitstreamReader -lLLVMBinaryFormat \
+# -lLLVMTargetParser -lLLVMSupport -lLLVMDemangle \
+# -lm /opt/homebrew/lib/libz3.dylib -lz -L/opt/homebrew/opt/zstd/lib -lzstd -lcurses -lxml2
