@@ -1,7 +1,10 @@
 import kotlinx.cinterop.*
 import llvm.*
 import platform.posix.int32_t
-import platform.posix.int32_tVar
+
+/**
+ * Reference Implementation from: https://github.com/llvm/llvm-project/blob/main/llvm/examples/OrcV2Examples/OrcV2CBindingsBasicUsage/OrcV2CBindingsBasicUsage.c
+ */
 
 object LLVMShutdown : Exception()
 
@@ -168,17 +171,11 @@ fun main(args: Array<String>) {
                 println("sum address found at ${sumAddress.value}")
 
                 val sum = sumAddress.value.toLong().toCPointer<CFunction<(int32_t, int32_t) -> int32_t>>()!!
-                // val sum = sumAddress.ptr.reinterpret<CFunction<(int32_t, int32_t) -> int32_t>>()
 
-                // val sum = LLVMOrcExecutorAddressToSumType(sumAddress.value)!!
+                // val sum = sumAddress.ptr.reinterpret<CFunction<(int32_t, int32_t) -> int32_t>>() // doesn't work
+                // val sum = LLVMOrcExecutorAddressToSumType(sumAddress.value)!! // hack to call out to C
 
                 println("reinterpreted sum function")
-
-                // val p1 = alloc<int32_tVar>()
-                // val p2 = alloc<int32_tVar>()
-                //
-                // p1.value = 1
-                // p2.value = 2
 
                 val result = sum.invoke(1, 2)
 
