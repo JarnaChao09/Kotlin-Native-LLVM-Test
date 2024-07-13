@@ -1,5 +1,7 @@
 import kotlinx.cinterop.*
 import llvm.*
+import platform.darwin.UInt64
+import kotlin.math.min
 
 // reference from: https://github.com/AlexPl292/Kaleidoscope-Kotlin-Llvm/blob/master/src/kaleidoscopeMain/kotlin/KaleidoscopeJIT.kt
 @OptIn(ExperimentalForeignApi::class)
@@ -40,6 +42,15 @@ class KaleidoscopeJIT(context: LLVMContextRef?) {
 
 @OptIn(ExperimentalForeignApi::class)
 fun main() {
+    memScoped {
+        val major = alloc<UIntVar>()
+        val minor = alloc<UIntVar>()
+        val patch = alloc<UIntVar>()
+
+        LLVMGetVersion(major.ptr, minor.ptr, patch.ptr)
+
+        println("LLVM Version ${major.value}.${minor.value}.${patch.value}")
+    }
     val context = LLVMContextCreate()
 
     val module = LLVMModuleCreateWithNameInContext("main", context)
