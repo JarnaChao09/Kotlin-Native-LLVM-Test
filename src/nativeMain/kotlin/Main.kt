@@ -174,13 +174,13 @@ fun main(args: Array<String>) {
 
                 println("reinterpreted sum function")
 
-                val p1 = alloc<int32_tVar>()
-                val p2 = alloc<int32_tVar>()
+                // val p1 = alloc<int32_tVar>()
+                // val p2 = alloc<int32_tVar>()
+                //
+                // p1.value = 1
+                // p2.value = 2
 
-                p1.value = 1
-                p2.value = 2
-
-                val result = sum.invoke(p1.value, p2.value)
+                val result = sum.invoke(1, 2)
 
                 println("1 + 2 = $result")
             } catch (err: JITCleanUp) {
