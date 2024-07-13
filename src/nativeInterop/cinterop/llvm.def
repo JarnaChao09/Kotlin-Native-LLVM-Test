@@ -1,7 +1,10 @@
 headers = llvm-c/Core.h \
-          llvm-c/ExecutionEngine.h \
-          llvm-c/Analysis.h
+          llvm-c/Error.h \
+          llvm-c/LLJIT.h \
+          llvm-c/Support.h \
+          llvm-c/Target.h
 headerFilter = llvm-c/**
+# staticLibraries =
 # linker = clang++
 compilerOpts.osx = -I/opt/homebrew/opt/llvm/include
 linkerOpts.osx = -L/opt/homebrew/opt/llvm/lib -lLLVM-18
@@ -17,3 +20,11 @@ linkerOpts.osx = -L/opt/homebrew/opt/llvm/lib -lLLVM-18
 # -lLLVMBitReader -lLLVMMC -lLLVMDebugInfoCodeView -lLLVMCore -lLLVMRemarks -lLLVMBitstreamReader -lLLVMBinaryFormat \
 # -lLLVMTargetParser -lLLVMSupport -lLLVMDemangle \
 # -lm /opt/homebrew/lib/libz3.dylib -lz -L/opt/homebrew/opt/zstd/lib -lzstd -lcurses -lxml2
+
+---
+
+typedef int32_t (*SumType)(int32_t, int32_t);
+
+SumType LLVMOrcExecutorAddressToSumType(LLVMOrcExecutorAddress addr) {
+    return (SumType)addr;
+}

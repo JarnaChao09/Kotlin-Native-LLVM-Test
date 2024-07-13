@@ -1,47 +1,100 @@
 import kotlinx.cinterop.*
 import llvm.*
-import platform.darwin.UInt64
-import kotlin.math.min
+import platform.posix.int32_t
+import platform.posix.int32_tVar
 
-// reference from: https://github.com/AlexPl292/Kaleidoscope-Kotlin-Llvm/blob/master/src/kaleidoscopeMain/kotlin/KaleidoscopeJIT.kt
+object LLVMShutdown : Exception()
+
+object JITCleanUp : Exception()
+
 @OptIn(ExperimentalForeignApi::class)
-class KaleidoscopeJIT(context: LLVMContextRef?) {
-    var executionEngine: LLVMExecutionEngineRef?
-    private val jitModule = LLVMModuleCreateWithNameInContext("jit", context)
-
-    init {
-        executionEngine = memScoped {
-            val ee = alloc<LLVMExecutionEngineRefVar>()
-            val errorPtr = alloc<CPointerVar<ByteVar>>()
-            val res = LLVMCreateJITCompilerForModule(ee.ptr, jitModule, 0u, errorPtr.ptr)
-            if (res != 0) error("Error in execution engine initialization: ${errorPtr.value?.toKString()}")
-            ee.value
-        }
-    }
-
-
-    fun addModule(module: LLVMModuleRef?) {
-        LLVMAddModule(executionEngine, module)
-    }
-
-    fun removeModule(module: LLVMModuleRef?) {
-        memScoped {
-            val outModule = alloc<LLVMModuleRefVar>()
-            val errorPtr = alloc<CPointerVar<ByteVar>>()
-            val res = LLVMRemoveModule(executionEngine, module, outModule.ptr, errorPtr.ptr)
-            if (res != 0) error("Error in removing module from jit ${errorPtr.value?.toKString()}")
-        }
-    }
-
-    fun findSymbol(name: String): LLVMValueRef? = memScoped {
-        val myFunction = alloc<LLVMValueRefVar>()
-        LLVMFindFunction(executionEngine, name, myFunction.ptr)
-        myFunction.value
-    }
+fun handleLLVMError(error: LLVMErrorRef?) {
+    val llvmErrorMessage = LLVMGetErrorMessage(error)
+    println("Error: ${llvmErrorMessage?.toKString() ?: "No Error String given"}")
+    LLVMDisposeErrorMessage(llvmErrorMessage)
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun main() {
+fun createDemoModule(): LLVMOrcThreadSafeModuleRef {
+    val threadSafeCtx = LLVMOrcCreateNewThreadSafeContext()
+
+    val ctx = LLVMOrcThreadSafeContextGetContext(threadSafeCtx)
+
+    val module = LLVMModuleCreateWithNameInContext("demo", ctx)
+
+    // demo_main
+    // val printfFunctionType = LLVMFunctionType(
+    //     ReturnType = LLVMInt32Type(),
+    //     ParamTypes = arrayOf(LLVMPointerType(LLVMInt8Type(), 0u)).toCValues(),
+    //     ParamCount = 1u,
+    //     IsVarArg = 1,
+    // )
+    //
+    // val printfFunction = LLVMAddFunction(module, "printf", printfFunctionType)
+    //
+    // val mainFunctionType = LLVMFunctionType(
+    //     ReturnType = LLVMInt32Type(),
+    //     ParamTypes = null,
+    //     ParamCount = 0u,
+    //     IsVarArg = 0,
+    // )
+    //
+    // val mainFunction = LLVMAddFunction(module, "demo_main", mainFunctionType)
+    //
+    // val entry = LLVMAppendBasicBlock(mainFunction, Name = "entry")
+    //
+    // val builder = LLVMCreateBuilder()
+    // LLVMPositionBuilderAtEnd(builder, entry)
+    //
+    // val printfArgs = arrayOf(
+    //     LLVMBuildGlobalStringPtr(builder, "%s\n", "printfString"),
+    //     LLVMBuildGlobalStringPtr(builder, "Hello from LLVM JIT!", "printfString2"),
+    // )
+    //
+    // LLVMBuildCall2(
+    //     builder,
+    //     printfFunctionType,
+    //     printfFunction,
+    //     printfArgs.toCValues(),
+    //     printfArgs.size.toUInt(),
+    //     "printfCall"
+    // )
+    //
+    // LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0u, 0))
+
+    // sum
+    val paramTypes = arrayOf(LLVMInt32Type(), LLVMInt32Type())
+    val sumFunctionType = LLVMFunctionType(
+        ReturnType = LLVMInt32Type(),
+        ParamTypes = paramTypes.toCValues(),
+        ParamCount = 2u,
+        IsVarArg = 0,
+    )
+    val sumFunction = LLVMAddFunction(module, "sum", sumFunctionType)
+
+    val entryBasicBlock = LLVMAppendBasicBlock(sumFunction, "entry")
+
+    val builder = LLVMCreateBuilder()
+    LLVMPositionBuilderAtEnd(builder, entryBasicBlock)
+
+    val sumFirstArg = LLVMGetParam(sumFunction, 0u)
+    val sumSecondArg = LLVMGetParam(sumFunction, 1u)
+
+    val result = LLVMBuildAdd(builder, sumFirstArg, sumSecondArg, "result")
+
+    LLVMBuildRet(builder, result)
+
+    LLVMDisposeBuilder(builder)
+
+    val threadSafeModule = LLVMOrcCreateNewThreadSafeModule(module, threadSafeCtx)
+
+    LLVMOrcDisposeThreadSafeContext(threadSafeCtx)
+
+    return threadSafeModule!!
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun main(args: Array<String>) {
     memScoped {
         val major = alloc<UIntVar>()
         val minor = alloc<UIntVar>()
@@ -51,72 +104,96 @@ fun main() {
 
         println("LLVM Version ${major.value}.${minor.value}.${patch.value}")
     }
-    val context = LLVMContextCreate()
 
-    val module = LLVMModuleCreateWithNameInContext("main", context)
-    val builder = LLVMCreateBuilderInContext(context)
-
-    val i8Type = LLVMInt8TypeInContext(context)
-    val i8TypePtr = LLVMPointerType(i8Type, 0u)
-    val i32Type = LLVMInt32TypeInContext(context)
-
-    val printfFunctionType = LLVMFunctionType(
-        ReturnType = i32Type,
-        ParamTypes = arrayOf(i8TypePtr).toCValues(),
-        ParamCount = 1u,
-        IsVarArg = 1,
-    )
-
-    val printfFunction = LLVMAddFunction(module, "printf", printfFunctionType)
-
-    val mainFunctionType = LLVMFunctionType(
-        ReturnType = i32Type,
-        ParamTypes = null,
-        ParamCount = 0u,
-        IsVarArg = 0,
-    )
-
-    val mainFunction = LLVMAddFunction(module, "main", mainFunctionType)
-
-    val entry = LLVMAppendBasicBlockInContext(context, mainFunction, Name = "entry")
-    LLVMPositionBuilderAtEnd(builder, entry)
-
-    val printfArgs = arrayOf(
-        LLVMBuildGlobalStringPtr(builder, "%s\n", "printfString"),
-        LLVMBuildGlobalStringPtr(builder, "Hello from LLVM JIT!", "printfString2")
-    )
-
-    LLVMBuildCall2(
-        builder,
-        printfFunctionType,
-        printfFunction,
-        printfArgs.toCValues(),
-        printfArgs.size.toUInt(),
-        "printfCall"
-    )
-
-    LLVMBuildRet(builder, LLVMConstInt(i32Type, 0u, 0))
-
-    LLVMDumpModule(module)
-
-    LLVMLinkInMCJIT()
     LLVMInitializeNativeTarget()
+
+    println("initialized native target")
+
     LLVMInitializeNativeAsmPrinter()
 
-    val jit = KaleidoscopeJIT(context)
+    println("initialized native asm printer")
 
-    jit.addModule(module)
+    memScoped {
+        try {
+            val jit = alloc<LLVMOrcLLJITRefVar>()
 
+            val error = alloc<LLVMErrorRefVar>()
 
-    val function = jit.findSymbol("main")
+            error.value = LLVMOrcCreateLLJIT(jit.ptr, null)
 
-    val ret = LLVMRunFunction(jit.executionEngine, function, 0u, null)
+            println("created LL JIT")
 
-    println("exited with status code ${LLVMGenericValueToInt(ret, 1)}")
+            if (error.value != null) {
+                handleLLVMError(error.value)
 
-    jit.removeModule(module)
+                throw LLVMShutdown
+            }
 
-    LLVMDisposeBuilder(builder)
-    LLVMDisposeModule(module)
-    LLVMContextDispose(context)
+            try {
+                val module = createDemoModule()
+
+                println("created demo module")
+
+                val jitdylib = LLVMOrcLLJITGetMainJITDylib(jit.value)!!
+
+                println("retrieved JIT Dylib")
+
+                val error2 = alloc<LLVMErrorRefVar>()
+
+                error2.value = LLVMOrcLLJITAddLLVMIRModule(jit.value, jitdylib, module)
+
+                println("added LLVM IR Module")
+
+                if (error2.value != null) {
+                    LLVMOrcDisposeThreadSafeModule(module)
+                    handleLLVMError(error2.value)
+
+                    throw JITCleanUp
+                }
+
+                val sumAddress = alloc<LLVMOrcExecutorAddressVar>()
+
+                val error3 = alloc<LLVMErrorRefVar>()
+
+                error3.value = LLVMOrcLLJITLookup(jit.value, sumAddress.ptr, "sum")
+
+                println("looked up address of main function")
+
+                if (error3.value != null) {
+                    handleLLVMError(error3.value)
+
+                    throw JITCleanUp
+                }
+
+                println("sum address found at ${sumAddress.value}")
+
+                val sum = sumAddress.value.toLong().toCPointer<CFunction<(int32_t, int32_t) -> int32_t>>()!!
+                // val sum = sumAddress.ptr.reinterpret<CFunction<(int32_t, int32_t) -> int32_t>>()
+
+                // val sum = LLVMOrcExecutorAddressToSumType(sumAddress.value)!!
+
+                println("reinterpreted sum function")
+
+                val p1 = alloc<int32_tVar>()
+                val p2 = alloc<int32_tVar>()
+
+                p1.value = 1
+                p2.value = 2
+
+                val result = sum.invoke(p1.value, p2.value)
+
+                println("1 + 2 = $result")
+            } catch (err: JITCleanUp) {
+                val cleanUpError = alloc<LLVMErrorRefVar>()
+
+                cleanUpError.value = LLVMOrcDisposeLLJIT(jit.value)
+
+                handleLLVMError(cleanUpError.value)
+
+                throw LLVMShutdown
+            }
+        } catch (err: LLVMShutdown) {
+            LLVMShutdown()
+        }
+    }
 }
