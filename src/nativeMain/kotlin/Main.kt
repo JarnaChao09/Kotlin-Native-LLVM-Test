@@ -180,16 +180,18 @@ fun main(args: Array<String>) {
                 val result = sum.invoke(1, 2)
 
                 println("1 + 2 = $result")
-            } catch (err: JITCleanUp) {
+            } catch (_: JITCleanUp) {
+            } finally {
                 val cleanUpError = alloc<LLVMErrorRefVar>()
 
                 cleanUpError.value = LLVMOrcDisposeLLJIT(jit.value)
 
-                handleLLVMError(cleanUpError.value)
-
-                throw LLVMShutdown
+                if (cleanUpError.value != null) {
+                    handleLLVMError(cleanUpError.value)
+                }
             }
-        } catch (err: LLVMShutdown) {
+        } catch (_: LLVMShutdown) {
+        } finally {
             LLVMShutdown()
         }
     }
