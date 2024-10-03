@@ -21,10 +21,3 @@ linkerOpts.osx = -L/opt/homebrew/opt/llvm/lib -lLLVM-18
 # -lLLVMTargetParser -lLLVMSupport -lLLVMDemangle \
 # -lm /opt/homebrew/lib/libz3.dylib -lz -L/opt/homebrew/opt/zstd/lib -lzstd -lcurses -lxml2
 
----
-
-typedef int32_t (*SumType)(int32_t, int32_t);
-
-SumType LLVMOrcExecutorAddressToSumType(LLVMOrcExecutorAddress addr) {
-    return (SumType)addr;
-}

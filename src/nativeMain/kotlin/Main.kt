@@ -172,9 +172,6 @@ fun main(args: Array<String>) {
 
                 val sum = sumAddress.value.toLong().toCPointer<CFunction<(int32_t, int32_t) -> int32_t>>()!!
 
-                // val sum = sumAddress.ptr.reinterpret<CFunction<(int32_t, int32_t) -> int32_t>>() // doesn't work
-                // val sum = LLVMOrcExecutorAddressToSumType(sumAddress.value)!! // hack to call out to C
-
                 println("reinterpreted sum function")
 
                 val result = sum.invoke(1, 2)
