@@ -1,5 +1,7 @@
 import kotlinx.cinterop.*
 import llvm.*
+import llvm4k.ThreadSafeContext
+import llvm4k.ThreadSafeModule
 import platform.posix.int32_t
 
 /**
@@ -17,83 +19,111 @@ fun handleLLVMError(error: LLVMErrorRef?) {
     LLVMDisposeErrorMessage(llvmErrorMessage)
 }
 
+// @OptIn(ExperimentalForeignApi::class)
+// fun createDemoModule(): LLVMOrcThreadSafeModuleRef {
+//     val threadSafeCtx = LLVMOrcCreateNewThreadSafeContext()
+//
+//     val ctx = LLVMOrcThreadSafeContextGetContext(threadSafeCtx)
+//
+//     val module = LLVMModuleCreateWithNameInContext("demo", ctx)
+//
+//     // demo_main
+//     // val printfFunctionType = LLVMFunctionType(
+//     //     ReturnType = LLVMInt32Type(),
+//     //     ParamTypes = arrayOf(LLVMPointerType(LLVMInt8Type(), 0u)).toCValues(),
+//     //     ParamCount = 1u,
+//     //     IsVarArg = 1,
+//     // )
+//     //
+//     // val printfFunction = LLVMAddFunction(module, "printf", printfFunctionType)
+//     //
+//     // val mainFunctionType = LLVMFunctionType(
+//     //     ReturnType = LLVMInt32Type(),
+//     //     ParamTypes = null,
+//     //     ParamCount = 0u,
+//     //     IsVarArg = 0,
+//     // )
+//     //
+//     // val mainFunction = LLVMAddFunction(module, "demo_main", mainFunctionType)
+//     //
+//     // val entry = LLVMAppendBasicBlock(mainFunction, Name = "entry")
+//     //
+//     // val builder = LLVMCreateBuilder()
+//     // LLVMPositionBuilderAtEnd(builder, entry)
+//     //
+//     // val printfArgs = arrayOf(
+//     //     LLVMBuildGlobalStringPtr(builder, "%s\n", "printfString"),
+//     //     LLVMBuildGlobalStringPtr(builder, "Hello from LLVM JIT!", "printfString2"),
+//     // )
+//     //
+//     // LLVMBuildCall2(
+//     //     builder,
+//     //     printfFunctionType,
+//     //     printfFunction,
+//     //     printfArgs.toCValues(),
+//     //     printfArgs.size.toUInt(),
+//     //     "printfCall"
+//     // )
+//     //
+//     // LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0u, 0))
+//
+//     // sum
+//     val paramTypes = arrayOf(LLVMInt32Type(), LLVMInt32Type())
+//     val sumFunctionType = LLVMFunctionType(
+//         ReturnType = LLVMInt32Type(),
+//         ParamTypes = paramTypes.toCValues(),
+//         ParamCount = 2u,
+//         IsVarArg = 0,
+//     )
+//     val sumFunction = LLVMAddFunction(module, "sum", sumFunctionType)
+//
+//     val entryBasicBlock = LLVMAppendBasicBlock(sumFunction, "entry")
+//
+//     val builder = LLVMCreateBuilder()
+//     LLVMPositionBuilderAtEnd(builder, entryBasicBlock)
+//
+//     val sumFirstArg = LLVMGetParam(sumFunction, 0u)
+//     val sumSecondArg = LLVMGetParam(sumFunction, 1u)
+//
+//     val result = LLVMBuildAdd(builder, sumFirstArg, sumSecondArg, "result")
+//
+//     LLVMBuildRet(builder, result)
+//
+//     LLVMDisposeBuilder(builder)
+//
+//     val threadSafeModule = LLVMOrcCreateNewThreadSafeModule(module, threadSafeCtx)
+//
+//     LLVMOrcDisposeThreadSafeContext(threadSafeCtx)
+//
+//     return threadSafeModule!!
+// }
+
 @OptIn(ExperimentalForeignApi::class)
-fun createDemoModule(): LLVMOrcThreadSafeModuleRef {
-    val threadSafeCtx = LLVMOrcCreateNewThreadSafeContext()
+fun createDemoModule(): ThreadSafeModule {
+    val threadSafeCtx = ThreadSafeContext()
 
-    val ctx = LLVMOrcThreadSafeContextGetContext(threadSafeCtx)
+    val ctx = threadSafeCtx.context
 
-    val module = LLVMModuleCreateWithNameInContext("demo", ctx)
+    val module = ctx.newModule("demo")
 
-    // demo_main
-    // val printfFunctionType = LLVMFunctionType(
-    //     ReturnType = LLVMInt32Type(),
-    //     ParamTypes = arrayOf(LLVMPointerType(LLVMInt8Type(), 0u)).toCValues(),
-    //     ParamCount = 1u,
-    //     IsVarArg = 1,
-    // )
-    //
-    // val printfFunction = LLVMAddFunction(module, "printf", printfFunctionType)
-    //
-    // val mainFunctionType = LLVMFunctionType(
-    //     ReturnType = LLVMInt32Type(),
-    //     ParamTypes = null,
-    //     ParamCount = 0u,
-    //     IsVarArg = 0,
-    // )
-    //
-    // val mainFunction = LLVMAddFunction(module, "demo_main", mainFunctionType)
-    //
-    // val entry = LLVMAppendBasicBlock(mainFunction, Name = "entry")
-    //
-    // val builder = LLVMCreateBuilder()
-    // LLVMPositionBuilderAtEnd(builder, entry)
-    //
-    // val printfArgs = arrayOf(
-    //     LLVMBuildGlobalStringPtr(builder, "%s\n", "printfString"),
-    //     LLVMBuildGlobalStringPtr(builder, "Hello from LLVM JIT!", "printfString2"),
-    // )
-    //
-    // LLVMBuildCall2(
-    //     builder,
-    //     printfFunctionType,
-    //     printfFunction,
-    //     printfArgs.toCValues(),
-    //     printfArgs.size.toUInt(),
-    //     "printfCall"
-    // )
-    //
-    // LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0u, 0))
+    val paramTypes = listOf(ctx.int32, ctx.int32)
 
-    // sum
-    val paramTypes = arrayOf(LLVMInt32Type(), LLVMInt32Type())
-    val sumFunctionType = LLVMFunctionType(
-        ReturnType = LLVMInt32Type(),
-        ParamTypes = paramTypes.toCValues(),
-        ParamCount = 2u,
-        IsVarArg = 0,
-    )
-    val sumFunction = LLVMAddFunction(module, "sum", sumFunctionType)
+    val sumFunction = module.functions.add("sum", paramTypes, ctx.int32)
 
-    val entryBasicBlock = LLVMAppendBasicBlock(sumFunction, "entry")
+    sumFunction.basicBlocks.append("entry") {
+        val sumFirstArg = it.getParam(0u)
+        val sumSecondArg = it.getParam(1u)
 
-    val builder = LLVMCreateBuilder()
-    LLVMPositionBuilderAtEnd(builder, entryBasicBlock)
+        val result = add(sumFirstArg, sumSecondArg, "result")
 
-    val sumFirstArg = LLVMGetParam(sumFunction, 0u)
-    val sumSecondArg = LLVMGetParam(sumFunction, 1u)
+        ret(result)
+    }
 
-    val result = LLVMBuildAdd(builder, sumFirstArg, sumSecondArg, "result")
+    val threadSafeModule = ThreadSafeModule(module, threadSafeCtx)
 
-    LLVMBuildRet(builder, result)
+    threadSafeCtx.dispose()
 
-    LLVMDisposeBuilder(builder)
-
-    val threadSafeModule = LLVMOrcCreateNewThreadSafeModule(module, threadSafeCtx)
-
-    LLVMOrcDisposeThreadSafeContext(threadSafeCtx)
-
-    return threadSafeModule!!
+    return threadSafeModule
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -133,7 +163,7 @@ fun main(args: Array<String>) {
             }
 
             try {
-                val module = createDemoModule()
+                val module = createDemoModule().llvmRef
 
                 println("created demo module")
 
