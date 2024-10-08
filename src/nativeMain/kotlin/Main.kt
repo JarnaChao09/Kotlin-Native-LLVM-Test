@@ -2,6 +2,7 @@ import kotlinx.cinterop.*
 import llvm.*
 import llvm4k.ThreadSafeContext
 import llvm4k.ThreadSafeModule
+import llvm4k.threadSafeContext
 import platform.posix.int32_t
 
 /**
@@ -99,31 +100,23 @@ fun handleLLVMError(error: LLVMErrorRef?) {
 // }
 
 @OptIn(ExperimentalForeignApi::class)
-fun createDemoModule(): ThreadSafeModule {
-    val threadSafeCtx = ThreadSafeContext()
+fun createDemoModule(): ThreadSafeModule = threadSafeContext {
+    val module = context.module("demo") {
+        function("sum", listOf(context.int32, context.int32), context.int32) {
+            basicBlocks.append("entry") {
+                val sumFirstArg = it.parameters[0]
+                val sumSecondArg = it.parameters[1]
 
-    val ctx = threadSafeCtx.context
+                val result = add(sumFirstArg, sumSecondArg, "result")
 
-    val module = ctx.newModule("demo")
-
-    val paramTypes = listOf(ctx.int32, ctx.int32)
-
-    val sumFunction = module.functions.add("sum", paramTypes, ctx.int32)
-
-    sumFunction.basicBlocks.append("entry") {
-        val sumFirstArg = it.getParam(0u)
-        val sumSecondArg = it.getParam(1u)
-
-        val result = add(sumFirstArg, sumSecondArg, "result")
-
-        ret(result)
+                ret(result)
+            }
+        }
     }
 
-    val threadSafeModule = ThreadSafeModule(module, threadSafeCtx)
+    val threadSafeModule = ThreadSafeModule(module, this)
 
-    threadSafeCtx.dispose()
-
-    return threadSafeModule
+    threadSafeModule
 }
 
 @OptIn(ExperimentalForeignApi::class)
