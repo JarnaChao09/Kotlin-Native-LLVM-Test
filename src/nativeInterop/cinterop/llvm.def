@@ -7,7 +7,7 @@ headerFilter = llvm-c/**
 # staticLibraries =
 # linker = clang++
 compilerOpts.osx = -I/opt/homebrew/opt/llvm/include
-linkerOpts.osx = -L/opt/homebrew/opt/llvm/lib -lLLVM-18
+linkerOpts.osx = -L/opt/homebrew/opt/llvm/lib -lLLVM
 # -Wl,-exported_symbols_list,llvm.list
 # -lLLVMInterpreter -lLLVMAArch64Disassembler -lLLVMMCDisassembler \
 # -lLLVMAArch64AsmParser -lLLVMAArch64CodeGen -lLLVMGlobalISel -lLLVMSelectionDAG -lLLVMCFGuard -lLLVMAsmPrinter \
