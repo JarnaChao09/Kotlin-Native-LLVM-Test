@@ -1,12 +1,11 @@
 import kotlinx.cinterop.*
 import llvm.*
-import llvm4k.ThreadSafeContext
 import llvm4k.ThreadSafeModule
 import llvm4k.threadSafeContext
 import platform.posix.int32_t
 
 /**
- * Reference Implementation from: https://github.com/llvm/llvm-project/blob/main/llvm/examples/OrcV2Examples/OrcV2CBindingsBasicUsage/OrcV2CBindingsBasicUsage.c
+ * Initial Reference Implementation from: https://github.com/llvm/llvm-project/blob/main/llvm/examples/OrcV2Examples/OrcV2CBindingsBasicUsage/OrcV2CBindingsBasicUsage.c
  */
 
 object LLVMShutdown : Exception()
@@ -20,88 +19,11 @@ fun handleLLVMError(error: LLVMErrorRef?) {
     LLVMDisposeErrorMessage(llvmErrorMessage)
 }
 
-// @OptIn(ExperimentalForeignApi::class)
-// fun createDemoModule(): LLVMOrcThreadSafeModuleRef {
-//     val threadSafeCtx = LLVMOrcCreateNewThreadSafeContext()
-//
-//     val ctx = LLVMOrcThreadSafeContextGetContext(threadSafeCtx)
-//
-//     val module = LLVMModuleCreateWithNameInContext("demo", ctx)
-//
-//     // demo_main
-//     // val printfFunctionType = LLVMFunctionType(
-//     //     ReturnType = LLVMInt32Type(),
-//     //     ParamTypes = arrayOf(LLVMPointerType(LLVMInt8Type(), 0u)).toCValues(),
-//     //     ParamCount = 1u,
-//     //     IsVarArg = 1,
-//     // )
-//     //
-//     // val printfFunction = LLVMAddFunction(module, "printf", printfFunctionType)
-//     //
-//     // val mainFunctionType = LLVMFunctionType(
-//     //     ReturnType = LLVMInt32Type(),
-//     //     ParamTypes = null,
-//     //     ParamCount = 0u,
-//     //     IsVarArg = 0,
-//     // )
-//     //
-//     // val mainFunction = LLVMAddFunction(module, "demo_main", mainFunctionType)
-//     //
-//     // val entry = LLVMAppendBasicBlock(mainFunction, Name = "entry")
-//     //
-//     // val builder = LLVMCreateBuilder()
-//     // LLVMPositionBuilderAtEnd(builder, entry)
-//     //
-//     // val printfArgs = arrayOf(
-//     //     LLVMBuildGlobalStringPtr(builder, "%s\n", "printfString"),
-//     //     LLVMBuildGlobalStringPtr(builder, "Hello from LLVM JIT!", "printfString2"),
-//     // )
-//     //
-//     // LLVMBuildCall2(
-//     //     builder,
-//     //     printfFunctionType,
-//     //     printfFunction,
-//     //     printfArgs.toCValues(),
-//     //     printfArgs.size.toUInt(),
-//     //     "printfCall"
-//     // )
-//     //
-//     // LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0u, 0))
-//
-//     // sum
-//     val paramTypes = arrayOf(LLVMInt32Type(), LLVMInt32Type())
-//     val sumFunctionType = LLVMFunctionType(
-//         ReturnType = LLVMInt32Type(),
-//         ParamTypes = paramTypes.toCValues(),
-//         ParamCount = 2u,
-//         IsVarArg = 0,
-//     )
-//     val sumFunction = LLVMAddFunction(module, "sum", sumFunctionType)
-//
-//     val entryBasicBlock = LLVMAppendBasicBlock(sumFunction, "entry")
-//
-//     val builder = LLVMCreateBuilder()
-//     LLVMPositionBuilderAtEnd(builder, entryBasicBlock)
-//
-//     val sumFirstArg = LLVMGetParam(sumFunction, 0u)
-//     val sumSecondArg = LLVMGetParam(sumFunction, 1u)
-//
-//     val result = LLVMBuildAdd(builder, sumFirstArg, sumSecondArg, "result")
-//
-//     LLVMBuildRet(builder, result)
-//
-//     LLVMDisposeBuilder(builder)
-//
-//     val threadSafeModule = LLVMOrcCreateNewThreadSafeModule(module, threadSafeCtx)
-//
-//     LLVMOrcDisposeThreadSafeContext(threadSafeCtx)
-//
-//     return threadSafeModule!!
-// }
-
 @OptIn(ExperimentalForeignApi::class)
 fun createDemoModule(): ThreadSafeModule = threadSafeContext {
     val module = context.module("demo") {
+        function("printf", listOf(context.int8.pointer), context.int32, vararg = true)
+
         function("sum", listOf(context.int32, context.int32), context.int32) {
             basicBlocks.append("entry") {
                 val sumFirstArg = it.parameters[0]
@@ -112,7 +34,25 @@ fun createDemoModule(): ThreadSafeModule = threadSafeContext {
                 ret(result)
             }
         }
+
+        function("main", listOf(context.int32, context.int32), context.int32) {
+            basicBlocks.append("entry") {
+                val arg1 = it.parameters[0]
+                val arg2 = it.parameters[1]
+
+                val (sumFunctionType, sumFunction) = functions["sum"]
+                val result = call(sumFunctionType, sumFunction.llvmRef, arrayOf(arg1, arg2))
+
+                val (printFunctionType, printFunction) = functions["printf"]
+                val printfString = globalStringPointer("sum of %d + %d = %d\n")
+                call(printFunctionType, printFunction.llvmRef, arrayOf(printfString, arg1, arg2, result))
+
+                ret(context.int32.constInt(0))
+            }
+        }
     }
+
+    LLVMDumpModule(module.llvmRef)
 
     val threadSafeModule = ThreadSafeModule(module, this)
 
@@ -177,11 +117,11 @@ fun main(args: Array<String>) {
                     throw JITCleanUp
                 }
 
-                val sumAddress = alloc<LLVMOrcExecutorAddressVar>()
+                val mainAddress = alloc<LLVMOrcExecutorAddressVar>()
 
                 val error3 = alloc<LLVMErrorRefVar>()
 
-                error3.value = LLVMOrcLLJITLookup(jit.value, sumAddress.ptr, "sum")
+                error3.value = LLVMOrcLLJITLookup(jit.value, mainAddress.ptr, "main")
 
                 println("looked up address of main function")
 
@@ -191,15 +131,15 @@ fun main(args: Array<String>) {
                     throw JITCleanUp
                 }
 
-                println("sum address found at ${sumAddress.value}")
+                println("main address found at ${mainAddress.value}")
 
-                val sum = sumAddress.value.toLong().toCPointer<CFunction<(int32_t, int32_t) -> int32_t>>()!!
+                val mainFunc = mainAddress.value.toLong().toCPointer<CFunction<(int32_t, int32_t) -> int32_t>>()!!
 
-                println("reinterpreted sum function")
+                println("reinterpreted main function")
 
-                val result = sum.invoke(1, 2)
+                val result = mainFunc.invoke(10, 12)
 
-                println("1 + 2 = $result")
+                println("main exited with code $result")
             } catch (_: JITCleanUp) {
             } finally {
                 val cleanUpError = alloc<LLVMErrorRefVar>()

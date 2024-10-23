@@ -1,6 +1,7 @@
 package llvm4k
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.toCValues
 import llvm.*
 
 @OptIn(ExperimentalForeignApi::class)
@@ -13,6 +14,14 @@ class Builder internal constructor(private val ref: LLVMBuilderRef?) {
 
     fun add(left: LLVMValueRef?, right: LLVMValueRef?, name: String = ""): LLVMValueRef? {
         return LLVMBuildAdd(this.ref, left, right, name)
+    }
+
+    fun call(functionType: Type, function: LLVMValueRef?, args: Array<LLVMValueRef?>, name: String = ""): LLVMValueRef? {
+        return LLVMBuildCall2(this.ref, functionType.llvmRef, function, args.toCValues(), args.size.toUInt(), name)
+    }
+
+    fun globalStringPointer(str: String, name: String = ""): LLVMValueRef? {
+        return LLVMBuildGlobalStringPtr(this.ref, str, name)
     }
 
     fun ret(value: LLVMValueRef?): LLVMValueRef? {

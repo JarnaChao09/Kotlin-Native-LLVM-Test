@@ -1,23 +1,24 @@
 package llvm4k
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.toCValues
 import llvm.LLVMAddFunction
-import llvm.LLVMFunctionType
 import llvm.LLVMTypeRef
 
 @OptIn(ExperimentalForeignApi::class)
 class FunctionCollection internal constructor(private val mod: Module) {
-    fun add(name: String, parameterTypes: List<LLVMTypeRef?>, returnType: LLVMTypeRef?, vararg: Boolean = false): Function {
-        val functionType = LLVMFunctionType(
-            ReturnType = returnType,
-            ParamTypes = parameterTypes.toCValues(),
-            ParamCount = parameterTypes.size.toUInt(),
-            IsVarArg = if (vararg) 1 else 0,
-        )
+    private val functions: MutableMap<String, Pair<Type, Function>> = mutableMapOf()
 
-        val function = LLVMAddFunction(this.mod.llvmRef, name, functionType)
+    fun add(name: String, parameterTypes: List<Type>, returnType: Type, vararg: Boolean = false): Function {
+        val functionType = Type.Function(this.mod.context, parameterTypes, returnType, vararg)
 
-        return Function(function)
+        val function = LLVMAddFunction(this.mod.llvmRef, name, functionType.llvmRef)
+
+        return Function(function).also {
+            this.functions[name] = functionType to it
+        }
+    }
+
+    operator fun get(name: String): Pair<Type, Function> {
+        return this.functions[name]!!
     }
 }

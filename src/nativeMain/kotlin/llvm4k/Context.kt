@@ -5,11 +5,17 @@ import llvm.*
 
 @OptIn(ExperimentalForeignApi::class)
 class Context internal constructor(private val ref: LLVMContextRef?) {
-    val int32: LLVMTypeRef?
-        get() = LLVMInt32TypeInContext(this.ref)
+    val llvmRef: LLVMContextRef?
+        get() = this.ref
+
+    val int8: Type
+        get() = Type(LLVMInt8TypeInContext(this.ref), this)
+
+    val int32: Type
+        get() = Type(LLVMInt32TypeInContext(this.ref), this)
 
     fun newModule(name: String): Module {
-        return Module(LLVMModuleCreateWithNameInContext(name, this.ref))
+        return Module(LLVMModuleCreateWithNameInContext(name, this.ref), this)
     }
 
     fun module(name: String, block: Module.() -> Unit): Module {
