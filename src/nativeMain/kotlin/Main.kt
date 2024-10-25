@@ -29,9 +29,15 @@ fun createDemoModule(): ThreadSafeModule = threadSafeContext {
                 val sumFirstArg = it.parameters[0]
                 val sumSecondArg = it.parameters[1]
 
-                val result = add(sumFirstArg, sumSecondArg, "result")
+                val ret = alloca(context.int32)
 
-                ret(result)
+                val addResult = add(sumFirstArg, sumSecondArg)
+
+                store(addResult, ret)
+
+                val returnValue = load(context.int32, ret)
+
+                ret(returnValue)
             }
         }
 
@@ -137,7 +143,13 @@ fun main(args: Array<String>) {
 
                 println("reinterpreted main function")
 
-                val result = mainFunc.invoke(10, 12)
+                println("x = ")
+                val p1 = readln().toInt()
+
+                println("y = ")
+                val p2 = readln().toInt()
+
+                val result = mainFunc.invoke(p1, p2)
 
                 println("main exited with code $result")
             } catch (_: JITCleanUp) {
