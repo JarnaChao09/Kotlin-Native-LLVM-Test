@@ -40,6 +40,14 @@ class Builder internal constructor(private val ref: LLVMBuilderRef?) {
         return LLVMBuildGlobalStringPtr(this.ref, str, name)
     }
 
+    fun extractValue(value: LLVMValueRef?, index: UInt, name: String = ""): LLVMValueRef? {
+        return LLVMBuildExtractValue(this.ref, value, index, name)
+    }
+
+    fun gep(type: Type, pointer: LLVMValueRef?, indices: Array<LLVMValueRef?>, name: String = ""): LLVMValueRef? {
+        return LLVMBuildGEP2(this.ref, type.llvmRef, pointer, indices.toCValues(), indices.size.toUInt(), name)
+    }
+
     fun ret(value: LLVMValueRef?): LLVMValueRef? {
         return LLVMBuildRet(this.ref, value)
     }

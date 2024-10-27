@@ -1,6 +1,7 @@
 package llvm4k
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.toCValues
 import llvm.*
 
 @OptIn(ExperimentalForeignApi::class)
@@ -13,6 +14,10 @@ class Context internal constructor(private val ref: LLVMContextRef?) {
 
     val int32: Type
         get() = Type(LLVMInt32TypeInContext(this.ref), this)
+
+    fun struct(elementTypes: Array<Type>, name: String? = null, packed: Boolean = false): Type {
+        return Type(LLVMStructTypeInContext(this.ref, elementTypes.map(Type::llvmRef).toCValues(), elementTypes.size.toUInt(), if (packed) 1 else 0), this)
+    }
 
     fun newModule(name: String): Module {
         return Module(LLVMModuleCreateWithNameInContext(name, this.ref), this)
