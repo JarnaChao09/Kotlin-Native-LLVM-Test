@@ -6,18 +6,18 @@ import llvm.LLVMGetParam
 import llvm.LLVMValueRef
 
 @OptIn(ExperimentalForeignApi::class)
-class Function internal constructor(private val ref: LLVMValueRef?) {
-    val llvmRef: LLVMValueRef?
+class Function internal constructor(private val ref: Value) {
+    val llvmRef: Value
         get() = this.ref
 
     val basicBlocks: BasicBlockCollection
         get() = BasicBlockCollection(this)
 
-    private fun getParam(index: UInt): LLVMValueRef? {
+    private fun getParam(index: UInt): Value {
         return LLVMGetParam(this.ref, index)
     }
 
-    val parameters: List<LLVMValueRef?> = List(LLVMCountParams(this.ref).toInt()) {
+    val parameters: List<Value> = List(LLVMCountParams(this.ref).toInt()) {
         getParam(it.toUInt())
     }
 }

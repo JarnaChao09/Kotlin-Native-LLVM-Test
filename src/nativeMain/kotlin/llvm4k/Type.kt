@@ -9,19 +9,19 @@ class Type internal constructor(private val ref: LLVMTypeRef?, private val conte
     val llvmRef: LLVMTypeRef?
         get() = this.ref
 
-    fun constInt(value: Int): LLVMValueRef? {
+    fun constInt(value: Int): Value {
         return LLVMConstInt(this.ref, value.toULong(), 0)
     }
 
-    fun constInt(value: UInt): LLVMValueRef? {
+    fun constInt(value: UInt): Value {
         return LLVMConstInt(this.ref, value.toULong(), 0)
     }
 
-    fun constInt(value: Long): LLVMValueRef? {
+    fun constInt(value: Long): Value {
         return LLVMConstInt(this.ref, value.toULong(), 0)
     }
 
-    fun constInt(value: ULong): LLVMValueRef? {
+    fun constInt(value: ULong): Value {
         return LLVMConstInt(this.ref, value, 0)
     }
 
